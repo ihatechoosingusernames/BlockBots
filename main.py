@@ -15,10 +15,12 @@ class Main_Window(pyglet.window.Window):
 		self.instruction = ""
 		self.label = pyglet.text.Label(self.instruction)
 
-		pyglet.clock.schedule_interval(self.update, 1)
+		pyglet.clock.schedule(self.update)
 
 	def update(self, dt):
-		self.robot.update()
+		if(dt != 0):
+			Moveable.update(dt)
+			self.robot.update(dt)
 
 	def on_draw(self):
 		self.clear()
@@ -26,6 +28,8 @@ class Main_Window(pyglet.window.Window):
 		for b in self.boxes:
 			b.draw()
 		self.label.draw()
+
+	def on_key_press(self, symbol, modifiers): {}
 
 	def on_text(self, text):
 		self.instruction += text
@@ -48,15 +52,21 @@ class Drawable:
 class Moveable(Drawable):
 	moveables = []
 
+	@staticmethod
+	def update(dt):
+		for m in Moveable.moveables:
+			m.update_pos(dt)
+
 	def __init__(self, pos=[0,0], col=(0,0,0)):
 		super(Moveable, self).__init__(pos, col)
 		if(self.collides()):
 			raise Exception("Don't stack the boxes, this is a 2D game!")
 		else:
 			self.moveables.append(self)
+#			self.speed = 5
 
-	def update_pos(self):
-		diff = [self.position[0] - self.shape[0], self.position[1] - self.shape[1]]
+	def update_pos(self, dt):
+		diff = [int((self.position[0] - self.shape[0]) * (dt)), int((self.position[1] - self.shape[1]) * (dt))] #Not sure what's going on with dt here, but fun things are happening!
 		if(self.collides()):
 			if(diff[0] < 0):
 				self.collides()[1].move_left()
@@ -83,10 +93,6 @@ class Moveable(Drawable):
 	def move_right(self):
 		self.position[0] += size
 
-	def draw(self):
-		self.update_pos()
-		pyglet.graphics.draw(4, pyglet.gl.GL_QUADS, ('v2i', self.shape), ('c3B', (self.colour + self.colour + self.colour + self.colour)))
-
 	def collides(self):
 		for x in self.moveables:
 			if(x.position == self.position):
@@ -96,20 +102,28 @@ class Moveable(Drawable):
 class Robot(Moveable):
 	def __init__(self):
 		super(Robot, self).__init__(col=(0,255,0))
+		self.update_time = 1
+		self.update_counter = 0
 		self.instruction = ""
 		self.current_instruction = ("" , -1)
 
-	def update(self):
-		if self.current_instruction[0] == 'w' or 'a' or 's' or 'd':
-			self.move_instruction()
-		elif self.current_instruction[0] == '*':
-			self.current_instruction = (self.instruction[self.current_instruction[1]-1], self.current_instruction[1]-1)
-			self.move_instruction()
+	def update(self, dt):
+		self.update_counter += dt
 
-		if len(self.instruction)-1 != self.current_instruction[1]:
-			self.current_instruction = (self.instruction[self.current_instruction[1]+1], self.current_instruction[1]+1)
-		elif len(self.instruction) > 0:
-			self.current_instruction = (self.instruction[0], 0)
+		if(self.update_counter > self.update_time):
+
+			self.update_counter = 0
+
+			if self.current_instruction[0] == 'w' or 'a' or 's' or 'd':
+				self.move_instruction()
+			elif self.current_instruction[0] == '*':
+				self.current_instruction = (self.instruction[self.current_instruction[1]-1], self.current_instruction[1]-1)
+				self.move_instruction()
+
+			if len(self.instruction)-1 != self.current_instruction[1]:
+				self.current_instruction = (self.instruction[self.current_instruction[1]+1], self.current_instruction[1]+1)
+			elif len(self.instruction) > 0:
+				self.current_instruction = (self.instruction[0], 0)
 
 	def set_instruction(self, inst):
 		self.instruction = inst
