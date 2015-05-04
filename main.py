@@ -4,6 +4,7 @@ from pyglet.window import key
 from pyglet.window import mouse
 
 size = 20
+smoothness = 5;
 
 class Main_Window(pyglet.window.Window):
 	def __init__(self):
@@ -63,10 +64,10 @@ class Moveable(Drawable):
 			raise Exception("Don't stack the boxes, this is a 2D game!")
 		else:
 			self.moveables.append(self)
-#			self.speed = 5
+			self.speed = 2
 
 	def update_pos(self, dt):
-		diff = [int((self.position[0] - self.shape[0]) * (dt)), int((self.position[1] - self.shape[1]) * (dt))] #Not sure what's going on with dt here, but fun things are happening!
+		diff = [int(self.position[0] - self.shape[0]), int(self.position[1] - self.shape[1])]
 		if(self.collides()):
 			if(diff[0] < 0):
 				self.collides()[1].move_left()
@@ -116,18 +117,20 @@ class Robot(Moveable):
 
 			if self.current_instruction[0] == 'w' or 'a' or 's' or 'd':
 				self.move_instruction()
-			elif self.current_instruction[0] == '*':
-				self.current_instruction = (self.instruction[self.current_instruction[1]-1], self.current_instruction[1]-1)
-				self.move_instruction()
-
 			if len(self.instruction)-1 != self.current_instruction[1]:
 				self.current_instruction = (self.instruction[self.current_instruction[1]+1], self.current_instruction[1]+1)
 			elif len(self.instruction) > 0:
 				self.current_instruction = (self.instruction[0], 0)
 
 	def set_instruction(self, inst):
-		self.instruction = inst
-		self.current_instruction = (inst[0], 0)
+		parsed_instruction = ""
+		for c in range(len(inst)):
+			if inst[c] == 'w' or 'a' or 's' or 'd':
+				parsed_instruction += inst[c]
+
+		self.instruction = parsed_instruction
+
+		self.current_instruction = (self.instruction[0], 0)
 
 	def move_instruction(self):
 		if self.current_instruction[0] == 'w':
