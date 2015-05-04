@@ -30,12 +30,13 @@ class Main_Window(pyglet.window.Window):
 			b.draw()
 		self.label.draw()
 
-	def on_key_press(self, symbol, modifiers): {}
+	def on_key_release(self, symbol, modifiers):
+		if symbol == key.ENTER or key.RETURN:
+			self.robot.set_instruction(self.instruction)
 
 	def on_text(self, text):
 		self.instruction += text
 		self.label = pyglet.text.Label(self.instruction)
-		self.robot.set_instruction(self.instruction)
 
 	def on_mouse_release(self, x, y, button, modifiers):
 		if button == pyglet.window.mouse.LEFT:
@@ -105,42 +106,95 @@ class Robot(Moveable):
 		super(Robot, self).__init__(col=(0,255,0))
 		self.update_time = 1
 		self.update_counter = 0
-		self.instruction = ""
-		self.current_instruction = ("" , -1)
+		self.instruction = "(FIRST,wd,w->FIRST)"
+		self.current_instruction = ["", -1] # The name of the current instruction and the number of actions still to go within that instruction 
 
 	def update(self, dt):
 		self.update_counter += dt
 
 		if(self.update_counter > self.update_time):
-
 			self.update_counter = 0
-
-			if self.current_instruction[0] == 'w' or 'a' or 's' or 'd':
-				self.move_instruction()
-			if len(self.instruction)-1 != self.current_instruction[1]:
-				self.current_instruction = (self.instruction[self.current_instruction[1]+1], self.current_instruction[1]+1)
-			elif len(self.instruction) > 0:
-				self.current_instruction = (self.instruction[0], 0)
+			self.run_instruction()
 
 	def set_instruction(self, inst):
-		parsed_instruction = ""
-		for c in range(len(inst)):
-			if inst[c] == 'w' or 'a' or 's' or 'd':
-				parsed_instruction += inst[c]
-
-		self.instruction = parsed_instruction
-
+		self.instruction = inst
 		self.current_instruction = (self.instruction[0], 0)
 
-	def move_instruction(self):
-		if self.current_instruction[0] == 'w':
+	# Runs robot instructions of format: (Instruction Name, Actions, Transitions)
+	def run_instruction(self):
+		if len(self.instruction) < 1: # Checks that there are instructions to use 
+			return
+
+		inst_pos = self.instruction.find("(" + self.current_instruction[0])
+		inst = self.instruction[inst_pos : self.instruction.index(")", inst_pos)] # Finds the definition of the current instruction
+
+		inst_parts = inst.split(",") # Splits instruction into its parts
+
+		actions = inst_parts[1] # Should be the Actions part of the instruction
+
+		if self.current_instruction[1] < 0: # Checks if this is a new instruction and sets the action count if so
+			self.current_instruction[1] = len(actions)
+
+		action_index = len(actions) - self.current_instruction[1]
+		self.current_instruction[1] -= 1
+
+		if  actions[action_index] == 'w':
 			self.move_up()
-		elif self.current_instruction[0] == 's':
+		elif actions[action_index] == 's':
 			self.move_down()
-		elif self.current_instruction[0] == 'a':
+		elif actions[action_index] == 'a':
 			self.move_left()
-		elif self.current_instruction[0] == 'd':
+		elif actions[action_index] == 'd':
 			self.move_right()
+
+		if self.current_instruction[1] == 0: # Checks if that was the last instruction
+			self.current_instruction[1] -= 1 # Sets to new instruction special value
+
+			transitions = inst_parts[2].split("/") # Delimiting the transitions, format is: Transition_Rule_1->Destination/Transition_Rule_2->Destination etc.
+
+			for t in transitions: # Finding the transition that passes first
+				condition = t.split("->")[0] # Splitting it into rule and destination
+				parse_stack = ["|"] # This ensures the first value is considered
+				evaluation = 0
+				for c in condition: # Parsing is very basic at the moment
+					if c == 'w' or 'a' or 's' or 'd':
+						c_result = self.sensor(c)
+						p = parse_stack.pop(0)
+
+						if p == "!":
+							c_result = not c_result
+							p = parse_stack.pop(0)
+
+						if p == "&":
+							evaluation = evaluation and c_result
+						elif p == "|":
+							evaluation = evaluation or c_result
+
+					else:
+						parse_stack.insert(0, c)
+
+				if evaluation: # The first transition that evaluates true is used
+					self.current_instruction[0] = t.split("->")[1]
+					return
+
+	# The sensor returns true if there is something occupying the specified adjacent space, default argument is any space, diagonals not included
+	def sensor(self, side=""):
+		f = lambda d: 1 if ((d.position[0] - self.position[0] == 1 or -1) or (m.position[1] - self.position[1] == 1 or -1)) else 0
+
+		if side == "w":
+			f = lambda d: 1 if (d.position[1] - self.position[1] == 1) else 0
+		elif side == "a":
+			f = lambda d: 1 if (d.position[0] - self.position[0] == -1) else 0
+		elif side == "s":
+			f = lambda d: 1 if (d.position[1] - self.position[1] == -1) else 0
+		elif side == "d":
+			f = lambda d: 1 if (d.position[0] - self.position[0] == 1) else 0
+
+		for m in Moveable.moveables:
+			if f(m):
+				return 1
+
+		return 0
 
 class Box(Moveable): {}
 
