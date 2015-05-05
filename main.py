@@ -4,16 +4,17 @@ from pyglet.window import key
 from pyglet.window import mouse
 
 size = 20
-smoothness = 5;
+window_width = 640
+window_height = 480
 
 class Main_Window(pyglet.window.Window):
 	def __init__(self):
-		super(Main_Window, self).__init__()
+		super(Main_Window, self).__init__(width=window_width, height=window_height)
 		self.set_caption("BlockBots!")
 
 		self.robot = Robot()
 		self.boxes = []
-		self.instruction = ""
+		self.instruction = self.robot.instruction
 		self.label = pyglet.text.Label(self.instruction)
 
 		pyglet.clock.schedule(self.update)
@@ -30,9 +31,18 @@ class Main_Window(pyglet.window.Window):
 			b.draw()
 		self.label.draw()
 
-	def on_key_release(self, symbol, modifiers):
-		if symbol == key.ENTER or key.RETURN:
+	def on_key_press(self, symbol, modifiers):
+		if symbol == key.ENTER:
 			self.robot.set_instruction(self.instruction)
+			self.label = pyglet.text.Label(self.instruction, color=(0,255,0,0))
+
+		if symbol == key.BACKSPACE:
+			if modifiers & key.MOD_SHIFT:
+				self.instruction = "" # Deletes whole line
+			else:
+				self.instruction = self.instruction[0:len(self.instruction)-1] # Removes last character
+
+			self.label = pyglet.text.Label(self.instruction)
 
 	def on_text(self, text):
 		self.instruction += text
@@ -69,15 +79,6 @@ class Moveable(Drawable):
 
 	def update_pos(self, dt):
 		diff = [int(self.position[0] - self.shape[0]), int(self.position[1] - self.shape[1])]
-		if(self.collides()):
-			if(diff[0] < 0):
-				self.collides()[1].move_left()
-			elif(diff[0] > 0):
-				self.collides()[1].move_right()
-			if(diff[1] < 0):
-				self.collides()[1].move_down()
-			elif(diff[1] > 0):
-				self.collides()[1].move_up()
 
 		for i in range(0, len(self.shape), 2):
 			self.shape[i] += diff[0]
@@ -86,14 +87,46 @@ class Moveable(Drawable):
 	def move_up(self):
 		self.position[1] += size
 
+		if(self.collides()): # Collision testing
+			collision_type, collider = self.collides()
+			if(collision_type == 1): # If it collides with another moveable
+				collider.move_up()
+				self.position[1] = collider.position[1] - size # Stay behind the other moveable if it hits a wall
+			else: # If it hits a wall
+				self.position[1] -= size
+
 	def move_down(self):
 		self.position[1] -= size
+
+		if(self.collides()):
+			collision_type, collider = self.collides()
+			if(collision_type == 1):
+				collider.move_down()
+				self.position[1] = collider.position[1] + size
+			else:
+				self.position[1] += size
 
 	def move_left(self):
 		self.position[0] -= size
 
+		if(self.collides()):
+			collision_type, collider = self.collides()
+			if(collision_type == 1):
+				collider.move_left()
+				self.position[0] = collider.position[0] + size
+			else:
+				self.position[0] += size
+
 	def move_right(self):
 		self.position[0] += size
+
+		if(self.collides()):
+			collision_type, collider = self.collides()
+			if(collision_type == 1):
+				collider.move_right()
+				self.position[0] = collider.position[0] - size
+			else:
+				self.position[0] -= size
 
 	def collides(self):
 		for x in self.moveables:
@@ -101,12 +134,15 @@ class Moveable(Drawable):
 				if(x != self):
 					return 1, x
 
+		if (self.position[0] > window_width) or (self.position[0] < 0) or (self.position[1] > window_height) or (self.position[1] < 0):
+			return 2, 0
+
 class Robot(Moveable):
 	def __init__(self):
 		super(Robot, self).__init__(col=(0,255,0))
 		self.update_time = 1
 		self.update_counter = 0
-		self.instruction = "(FIRST,wd,w->FIRST)"
+		self.instruction = "(0,wwdd,!d->1)(1,,w->2/a->3/s->4/d->5)(2,w,)(3,a,)(4,s,)(5,d,)"
 		self.current_instruction = ["", -1] # The name of the current instruction and the number of actions still to go within that instruction 
 
 	def update(self, dt):
@@ -118,77 +154,94 @@ class Robot(Moveable):
 
 	def set_instruction(self, inst):
 		self.instruction = inst
-		self.current_instruction = (self.instruction[0], 0)
+		self.current_instruction = [inst.split("(")[0].split(",")[0], -1] # Sets current instruction to first instruction name
 
 	# Runs robot instructions of format: (Instruction Name, Actions, Transitions)
 	def run_instruction(self):
 		if len(self.instruction) < 1: # Checks that there are instructions to use 
 			return
 
-		inst_pos = self.instruction.find("(" + self.current_instruction[0])
+		inst_pos = self.instruction.find("(" + self.current_instruction[0]) + 1
 		inst = self.instruction[inst_pos : self.instruction.index(")", inst_pos)] # Finds the definition of the current instruction
 
 		inst_parts = inst.split(",") # Splits instruction into its parts
 
+		print("Instruction Parts:\n  Name: " + inst_parts[0] + "\n  Actions: " + inst_parts[1] + "\n  Transitions: " + inst_parts[2])
+
 		actions = inst_parts[1] # Should be the Actions part of the instruction
 
-		if self.current_instruction[1] < 0: # Checks if this is a new instruction and sets the action count if so
-			self.current_instruction[1] = len(actions)
+		if len(actions) > 0: # Only runs the action code if there are actions
 
-		action_index = len(actions) - self.current_instruction[1]
-		self.current_instruction[1] -= 1
+			if self.current_instruction[1] < 0: # Checks if this is a new instruction and sets the action count if so
+				self.current_instruction[1] = len(actions)
 
-		if  actions[action_index] == 'w':
-			self.move_up()
-		elif actions[action_index] == 's':
-			self.move_down()
-		elif actions[action_index] == 'a':
-			self.move_left()
-		elif actions[action_index] == 'd':
-			self.move_right()
+			action_index = len(actions) - self.current_instruction[1]
+			print("  Action Number: " + str(action_index))
+			self.current_instruction[1] -= 1
 
-		if self.current_instruction[1] == 0: # Checks if that was the last instruction
-			self.current_instruction[1] -= 1 # Sets to new instruction special value
+			if  actions[action_index] == 'w':
+				self.move_up()
+			elif actions[action_index] == 's':
+				self.move_down()
+			elif actions[action_index] == 'a':
+				self.move_left()
+			elif actions[action_index] == 'd':
+				self.move_right()
+
+		if self.current_instruction[1] < 1: # Checks if that was the last instruction
+			self.current_instruction[1] = -1 # Sets to new instruction special value
 
 			transitions = inst_parts[2].split("/") # Delimiting the transitions, format is: Transition_Rule_1->Destination/Transition_Rule_2->Destination etc.
+			print("\nTransitions:")
 
 			for t in transitions: # Finding the transition that passes first
-				condition = t.split("->")[0] # Splitting it into rule and destination
-				parse_stack = ["|"] # This ensures the first value is considered
-				evaluation = 0
-				for c in condition: # Parsing is very basic at the moment
-					if c == 'w' or 'a' or 's' or 'd':
-						c_result = self.sensor(c)
-						p = parse_stack.pop(0)
+				print("  Transition Rule: " + t)
 
-						if p == "!":
+				condition = t.split("->")[0] # Splitting it into rule and destination
+				operator_stack = ["|"] # This ensures the first value is considered if there is no operator before it
+				evaluation = 0 # The result of the transition rule
+				for c in condition: # Parsing is very basic at the moment
+					print("    Parsing Character: " + c + "    Operator Stack: " + str(len(operator_stack)))
+
+					if (c == 'w') or (c == 'a') or (c == 's') or (c == 'd'):
+						c_result = self.sensor(c) # Find the initial value of that sensor reading
+						print("    Sensor Result: " + str(c_result))
+						p = operator_stack.pop(len(operator_stack)-1) # Find the most recent operator for it
+
+						if p == "!": # The "not" operator is used in conjunction with other operators, so the next is popped
 							c_result = not c_result
-							p = parse_stack.pop(0)
+							p = operator_stack.pop(len(operator_stack)-1)
 
 						if p == "&":
 							evaluation = evaluation and c_result
 						elif p == "|":
 							evaluation = evaluation or c_result
 
-					else:
-						parse_stack.insert(0, c)
+						print("    Parsed  Character: " + c + "    Operator Stack: " + str(len(operator_stack)) + "    Result So Far: " + str(evaluation))
 
-				if evaluation: # The first transition that evaluates true is used
+					else: # Add all operators to operator stack
+						operator_stack.append(c)
+						print("    Parsed   Operator: " + c + "    Operator Stack: " + str(len(operator_stack)))
+
+				if evaluation: # The first transition that evaluates true is used, if none do, the current rule loops forever
 					self.current_instruction[0] = t.split("->")[1]
+					print("  Transition Accepted, New Instruction: " + self.current_instruction[0])
 					return
 
 	# The sensor returns true if there is something occupying the specified adjacent space, default argument is any space, diagonals not included
 	def sensor(self, side=""):
+		print("    Sensor called on side: " + side)
+
 		f = lambda d: 1 if ((d.position[0] - self.position[0] == 1 or -1) or (m.position[1] - self.position[1] == 1 or -1)) else 0
 
 		if side == "w":
-			f = lambda d: 1 if (d.position[1] - self.position[1] == 1) else 0
+			f = lambda d: 1 if (d.position[1] - self.position[1] == size) else 0
 		elif side == "a":
-			f = lambda d: 1 if (d.position[0] - self.position[0] == -1) else 0
+			f = lambda d: 1 if (d.position[0] - self.position[0] == -size) else 0
 		elif side == "s":
-			f = lambda d: 1 if (d.position[1] - self.position[1] == -1) else 0
+			f = lambda d: 1 if (d.position[1] - self.position[1] == -size) else 0
 		elif side == "d":
-			f = lambda d: 1 if (d.position[0] - self.position[0] == 1) else 0
+			f = lambda d: 1 if (d.position[0] - self.position[0] == size) else 0
 
 		for m in Moveable.moveables:
 			if f(m):
