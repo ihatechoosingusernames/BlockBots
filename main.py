@@ -10,7 +10,7 @@ window_height = 480
 
 parser_debug = 0 	# Change to 1 for parser debugging printouts
 conveyor_debug = 0 	# Change to 1 for conveyor debugging printouts
-draw_debug = 1 		# Change to 1 for draw debugging printouts
+draw_debug = 0 		# Change to 1 for draw debugging printouts
 
 class Main_Window(pyglet.window.Window):
 	def __init__(self):
@@ -26,9 +26,9 @@ class Main_Window(pyglet.window.Window):
 		self.map_init()
 
 	def map_init(self):
-		Conveyor(pos=[0,window_height/2], dir="d")
+		Conveyor(pos=[0,int(window_height/2)], dir="d")
 
-		Box(pos=[0,window_height/2])
+		Box(pos=[0,int(window_height/2)])
 
 	def update(self, dt):
 		if(dt != 0):
