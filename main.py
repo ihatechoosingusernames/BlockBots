@@ -114,39 +114,55 @@ class Moveable(Drawable):
 			self.speed = 2
 
 	def update_pos(self, dt):
-		diff = [int(self.position[0] - self.shape[0]), int(self.position[1] - self.shape[1])] # Difference between current position and currently drawn position
+		diff = [int(self.position[0] - self.shape[0]), int(self.position[1] - self.shape[1])]
 
 		for i in range(0, len(self.shape), 2):
 			self.shape[i] += diff[0]
 			self.shape[i+1] += diff[1]
 
 	def move_up(self):
-		self.move([0, 1])
+		self.position[1] += size
+
+		if(self.collides()): # Collision testing
+			collision_type, collider = self.collides()
+			if(collision_type == 1): # If it collides with another moveable
+				collider.move_up()
+				self.position[1] = collider.position[1] - size # Stay behind the other moveable if it hits a wall
+			else: # If it hits a wall
+				self.position[1] -= size
 
 	def move_down(self):
-		self.move([0, -1])
-
-	def move_left(self):
-		self.move([-1, 0])
-
-	def move_right(self):
-		self.move([1, 0])
-
-	def move(self, move_vec): # Moves the Moveable when given a vector [squares_x, squares_y]
-		distance_vec = [size * move_vec[0], size * move_vec[1]]
-
-		self.position[0] += distance_vec[0]
-		self.position[1] += distance_vec[1]
+		self.position[1] -= size
 
 		if(self.collides()):
 			collision_type, collider = self.collides()
 			if(collision_type == 1):
-				collider.move(move_vec)
-				self.position[0] = collider.position[0] - distance_vec[0]
-				self.position[1] = collider.position[1] - distance_vec[1]
+				collider.move_down()
+				self.position[1] = collider.position[1] + size
 			else:
-				self.position[0] -= distance_vec[0]
-				self.position[1] -= distance_vec[1]
+				self.position[1] += size
+
+	def move_left(self):
+		self.position[0] -= size
+
+		if(self.collides()):
+			collision_type, collider = self.collides()
+			if(collision_type == 1):
+				collider.move_left()
+				self.position[0] = collider.position[0] + size
+			else:
+				self.position[0] += size
+
+	def move_right(self):
+		self.position[0] += size
+
+		if(self.collides()):
+			collision_type, collider = self.collides()
+			if(collision_type == 1):
+				collider.move_right()
+				self.position[0] = collider.position[0] - size
+			else:
+				self.position[0] -= size
 
 	def collides(self):
 		for x in self.moveables:
@@ -159,10 +175,10 @@ class Moveable(Drawable):
 
 class Robot(Moveable):
 	def __init__(self):
-		super(Robot, self).__init__(pos=[0,0], col=(0,255,0))
+		super(Robot, self).__init__(pos=[1,1], col=(0,255,0))
 		self.update_time = 1
 		self.update_counter = 0
-		self.instruction = "(0,wwdd,->1)(1,,w->2/a->3/s->4/d->5)(2,w,)(3,a,)(4,s,)(5,d,)"
+		self.instruction = "(0,wwdd,!d->1)(1,,w->2/a->3/s->4/d->5)(2,w,)(3,a,)(4,s,)(5,d,)"
 		self.current_instruction = ["", -1] # The name of the current instruction and the number of actions still to go within that instruction 
 
 	def update(self, dt):
@@ -176,7 +192,7 @@ class Robot(Moveable):
 		self.instruction = inst
 		self.current_instruction = [inst.split("(")[0].split(",")[0], -1] # Sets current instruction to first instruction name
 
-	# Runs robot instructions of format: (Instruction Name, Actions, Transitions) an empty transition will loop itself forever and a transition without a condition will always be true
+	# Runs robot instructions of format: (Instruction Name, Actions, Transitions)
 	def run_instruction(self):
 		if len(self.instruction) < 1: # Checks that there are instructions to use 
 			return
@@ -186,7 +202,7 @@ class Robot(Moveable):
 
 		inst_parts = inst.split(",") # Splits instruction into its parts
 
-		print("\nInstruction Parts:\n  Name: " + inst_parts[0] + "\n  Actions: " + inst_parts[1] + "\n  Transitions: " + inst_parts[2]) if parser_debug else 0
+		print("Instruction Parts:\n  Name: " + inst_parts[0] + "\n  Actions: " + inst_parts[1] + "\n  Transitions: " + inst_parts[2]) if parser_debug else 0
 
 		actions = inst_parts[1] # Should be the Actions part of the instruction
 
@@ -219,12 +235,11 @@ class Robot(Moveable):
 
 				condition = t.split("->")[0] # Splitting it into rule and destination
 				operator_stack = ["|"] # This ensures the first value is considered if there is no operator before it
-				evaluation = 1 if (len(condition) == 0) and (len(t) != 0) else 0 # Stores the result of the transition rule, initially set to true for conditionless transitions, but not true for empty transitions
-
+				evaluation = 0 # The result of the transition rule
 				for c in condition: # Parsing is very basic at the moment
 					print("    Parsing Character: " + c + "    Operator Stack: " + str(len(operator_stack))) if parser_debug else 0
 
-					if (c == 'w') or (c == 'a') or (c == 's') or (c == 'd') or (c == 'e'):
+					if (c == 'w') or (c == 'a') or (c == 's') or (c == 'd'):
 						c_result = self.sensor(c) # Find the initial value of that sensor reading
 						print("    Sensor Result: " + str(c_result)) if parser_debug else 0
 						p = operator_stack.pop(len(operator_stack)-1) # Find the most recent operator for it
@@ -251,19 +266,18 @@ class Robot(Moveable):
 
 	# The sensor returns true if there is something occupying the specified adjacent space, default argument is any space, diagonals not included
 	def sensor(self, side=""):
-		
 		print("    Sensor called on side: " + side) if parser_debug else 0
 
-		f = lambda d: 1 if ((d.position[0] - self.position[0] == size or -size) or (m.position[1] - self.position[1] == size or -size)) else 0
+		f = lambda d: 1 if ((d.position[0] - self.position[0] == 1 or -1) or (m.position[1] - self.position[1] == 1 or -1)) else 0
 
 		if side == "w":
-			f = lambda d: 1 if (d.position[0] == self.position[0]) and (d.position[1] - self.position[1] == size) else 0
+			f = lambda d: 1 if (d.position[1] - self.position[1] == size) else 0
 		elif side == "a":
-			f = lambda d: 1 if (d.position[1] == self.position[1]) and (d.position[0] - self.position[0] == -size) else 0
+			f = lambda d: 1 if (d.position[0] - self.position[0] == -size) else 0
 		elif side == "s":
-			f = lambda d: 1 if (d.position[0] == self.position[0]) and (d.position[1] - self.position[1] == -size) else 0
+			f = lambda d: 1 if (d.position[1] - self.position[1] == -size) else 0
 		elif side == "d":
-			f = lambda d: 1 if (d.position[1] == self.position[1]) and (d.position[0] - self.position[0] == size) else 0
+			f = lambda d: 1 if (d.position[0] - self.position[0] == size) else 0
 
 		for m in Moveable.moveables:
 			if f(m):
