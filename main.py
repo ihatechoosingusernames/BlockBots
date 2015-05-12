@@ -5,13 +5,16 @@ from pyglet.window import key
 from pyglet.window import mouse
 
 size = 20
-window_width = 640
-window_height = 480
+window_width = 800
+window_height = 600
+
+score = 0
 
 parser_debug = 0 	# Change these to 1 for various debugging printouts
 conveyor_debug = 0
 draw_debug = 0
-programmer_debug = 1
+programmer_debug = 0
+delivery_debug = 1
 
 class Main_Window(pyglet.window.Window):
 	def __init__(self):
@@ -20,7 +23,8 @@ class Main_Window(pyglet.window.Window):
 
 		self.selected = 0
 		self.instruction = ""
-		self.label = pyglet.text.Label(self.instruction)
+		self.console = pyglet.text.Label(text=self.instruction)
+		self.score = pyglet.text.Label(text=str(score), x=int(window_width/2), y=int(window_height-15), bold=1)
 
 		pyglet.clock.schedule(self.update)
 
@@ -35,11 +39,13 @@ class Main_Window(pyglet.window.Window):
 		if(dt != 0):
 			Updateable.update(dt)
 			Moveable.update(dt)
+			self.score = pyglet.text.Label(text=str(score), x=int(window_width/2), y=int(window_height-15), bold=1)
 
 	def on_draw(self):
 		self.clear()
 		Drawable.draw()
-		self.label.draw()
+		self.console.draw()
+		self.score.draw()
 
 	def on_key_press(self, symbol, modifiers):
 		if symbol == key.ENTER:
@@ -51,11 +57,11 @@ class Main_Window(pyglet.window.Window):
 			else:
 				self.instruction = self.instruction[0:len(self.instruction)-1] # Removes last character
 
-			self.label = pyglet.text.Label(self.instruction)
+			self.console = pyglet.text.Label(self.instruction)
 
 	def on_text(self, text):
 		self.instruction += text
-		self.label = pyglet.text.Label(self.instruction)
+		self.console = pyglet.text.Label(self.instruction)
 
 	def on_mouse_release(self, x, y, button, modifiers):
 		if button == pyglet.window.mouse.LEFT:
@@ -69,6 +75,12 @@ class Main_Window(pyglet.window.Window):
 				Conveyor(pos=position, dir=self.instruction.split(" ")[1])
 			elif self.instruction == "robot":
 				self.selected = Robot(pos=position)
+			elif self.instruction.startswith("delivery"):
+				self.selected = Delivery_Block(pos=position, delivering=int(self.instruction.split(" ")[1]), time=int(self.instruction.split(" ")[2]))
+			elif self.instruction == "delete":
+				for d in Drawable.drawables:
+					if d.position == position:
+						d.delete()
 
 class Updateable:
 	updateables = []
@@ -88,7 +100,10 @@ class Updateable:
 		if Updateable.update_counter > Updateable.update_time:
 			Updateable.update_counter = 0
 			for u in Updateable.updateables:
-				u.update_self(dt)
+				u.update_self(Updateable.update_time)
+
+	def delete(self):
+		Updateable.updateables.remove(self)
 
 class Drawable:
 	drawables = []
@@ -108,6 +123,9 @@ class Drawable:
 		print("Colour :" + str((self.colour + self.colour + self.colour + self.colour))) if draw_debug else 0
 		
 		pyglet.graphics.draw(4, pyglet.gl.GL_QUADS, ('v2i', self.shape), ('c3B', (self.colour + self.colour + self.colour + self.colour)))
+
+	def delete(self):
+		Drawable.drawables.remove(self)
 
 class Moveable(Drawable):
 	moveables = []
@@ -133,6 +151,10 @@ class Moveable(Drawable):
 		else:
 			self.moveables.append(self)
 			self.speed = 2
+
+	def delete(self):
+		Drawable.drawables.remove(self)
+		Moveable.moveables.remove(self)
 
 	def update_pos(self, dt):
 		diff = [int(self.position[0] - self.shape[0]), int(self.position[1] - self.shape[1])]
@@ -165,6 +187,7 @@ class Moveable(Drawable):
 			collision_type, collider = self.collides()
 			if(collision_type == 1):
 				collider.move(move_vec)
+				collider.update_pos(0)
 				self.position[0] = collider.position[0] - distance_vec[0]
 				self.position[1] = collider.position[1] - distance_vec[1]
 			else:
@@ -172,18 +195,18 @@ class Moveable(Drawable):
 				self.position[1] -= distance_vec[1]
 
 	def collides(self):
-		for x in self.moveables:
+		for x in Moveable.moveables:
 			if (x.position == self.position) and (x != self):
 				return 1, x
 
-		if (self.position[0] > window_width) or (self.position[0] < 0) or (self.position[1] > window_height) or (self.position[1] < 0):
+		if (self.position[0] > window_width-size) or (self.position[0] < 0) or (self.position[1] > window_height-size) or (self.position[1] < 0):
 			return 2, 0
 
 class Robot(Moveable):
 	def __init__(self, pos=[0,0], col=(0,255,0)):
 		super(Robot, self).__init__(pos, col)
 		self.instruction = "(1,,w->2/a->3/s->4/d->5)(2,w,)(3,a,)(4,s,)(5,d,)"
-		self.current_instruction = ["", -1] # The name of the current instruction and the number of actions still to go within that instruction 
+		self.current_instruction = ["", -1] # The name of the current instruction and the number of actions still to go within that instruction
 
 	def update_self(self, dt):
 		self.run_instruction()
@@ -318,6 +341,10 @@ class Conveyor(Drawable, Updateable):
 				print("Found Moveable and moved it") if conveyor_debug else 0
 				return
 
+	def delete(self):
+		Drawable.delete(self)
+		Conveyor.conveyors.remove(self)
+
 class Programmer(Drawable, Updateable):
 	programmers = []
 
@@ -344,9 +371,63 @@ class Programmer(Drawable, Updateable):
 					m.set_instruction(self.program)
 					print("Programmed a robot") if programmer_debug else 0
 
+	def delete(self):
+		Drawable.delete(self)
+		Updateable.delete(self)
+		Programmer.programmers.remove(self)
+
 	def set_instruction(self, instruction):
 		self.program = instruction
 		print("Programmer programmed") if programmer_debug else 0
+
+class Delivery_Block(Drawable, Updateable):
+	delivery_blocks = []
+
+	def __init__(self, pos=[0,0], col=[30,30,30], delivering=1, time=1):
+		super(Delivery_Block, self).__init__(pos, col)
+		Updateable.__init__(self)
+
+		self.delivering = delivering
+		self.time = time
+		self.counter = 0
+
+		for d in Delivery_Block.delivery_blocks:
+			if self.position == d.position:
+				d.delete()
+				print("Delivery Block Overlap Detected") if delivery_debug else 0
+				continue
+
+		Delivery_Block.delivery_blocks.append(self)
+		print("Delivery Block created\n  Delivering: " + str(delivering) + "\n  Time: " + str(time)) if delivery_debug else 0
+
+	def update_self(self, dt):
+
+		global score
+		self.counter += dt
+
+		if self.counter > self.time:
+			self.counter = 0
+			print("Updating Delivery Block \n  Position: " + str(self.position) + "\n  Delivering: " + str(self.delivering) + "\n  Time: " + str(self.time)) if delivery_debug else 0
+
+			for m in Moveable.moveables:
+				if m.position == self.position:
+					if (type(m) is Box) and (self.delivering == 0):
+						m.delete()
+						score += 1
+						print("    Taking Box to Deliver") if delivery_debug else 0
+					return
+
+			if self.delivering:
+				Box(pos=[self.position[0], self.position[1]])
+				print("    Delivering Box") if delivery_debug else 0
+			else:
+				score -= 1
+				print("    Missed a Delivery") if delivery_debug else 0
+
+	def delete(self):
+		Drawable.delete(self)
+		Updateable.delete(self)
+		Delivery_Block.delivery_blocks.remove(self)
 
 window = Main_Window()
 pyglet.app.run()
