@@ -14,7 +14,7 @@ parser_debug = 0 	# Change these to 1 for various debugging printouts
 conveyor_debug = 0
 draw_debug = 0
 programmer_debug = 0
-delivery_debug = 1
+delivery_debug = 0
 
 class Main_Window(pyglet.window.Window):
 	def __init__(self):
@@ -23,17 +23,14 @@ class Main_Window(pyglet.window.Window):
 
 		self.selected = 0
 		self.instruction = ""
-		self.console = pyglet.text.Label(text=self.instruction)
+		self.console = pyglet.text.Label(text=self.instruction, y=5, x=5)
 		self.score = pyglet.text.Label(text=str(score), x=int(window_width/2), y=int(window_height-15), bold=1)
 
 		pyglet.clock.schedule(self.update)
 
 		self.map_init()
 
-	def map_init(self):
-		Conveyor(pos=[0,int(window_height/2)], dir="d")
-
-		Box(pos=[0,int(window_height/2)])
+	def map_init(self): {}
 
 	def update(self, dt):
 		if(dt != 0):
@@ -61,7 +58,7 @@ class Main_Window(pyglet.window.Window):
 
 	def on_text(self, text):
 		self.instruction += text
-		self.console = pyglet.text.Label(self.instruction)
+		self.console = pyglet.text.Label(self.instruction, y=5, x=5)
 
 	def on_mouse_release(self, x, y, button, modifiers):
 		if button == pyglet.window.mouse.LEFT:
