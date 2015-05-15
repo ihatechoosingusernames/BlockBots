@@ -9,12 +9,16 @@ window_width = 800
 window_height = 600
 
 score = 0
+update_count = 0
+time_count = 0
 
-parser_debug = 0 	# Change these to 1 for various debugging printouts
-conveyor_debug = 0
-draw_debug = 0
-programmer_debug = 0
-delivery_debug = 0
+parser_debug 		= 0 	# Change these to 1 for various debugging printouts
+conveyor_debug 		= 0
+draw_debug 			= 0
+programmer_debug	= 0
+delivery_debug 		= 0
+collision_debug 	= 0
+update_debug		= 0
 
 class Main_Window(pyglet.window.Window):
 	def __init__(self):
@@ -33,6 +37,8 @@ class Main_Window(pyglet.window.Window):
 	def map_init(self): {}
 
 	def update(self, dt):
+		global time_count
+		time_count += dt
 		if(dt != 0):
 			Updateable.update(dt)
 			Moveable.update(dt)
@@ -52,9 +58,9 @@ class Main_Window(pyglet.window.Window):
 			if modifiers & key.MOD_SHIFT:
 				self.instruction = "" # Deletes whole line
 			else:
-				self.instruction = self.instruction[0:len(self.instruction)-1] # Removes last character
+				self.instruction = self.instruction[0:len(self.instruction)-1] # Removes last characterobot
 
-			self.console = pyglet.text.Label(self.instruction)
+			self.console = pyglet.text.Label(text=self.instruction, y=5, x=5)
 
 	def on_text(self, text):
 		self.instruction += text
@@ -88,13 +94,19 @@ class Updateable:
 	def __init__(self):
 		Updateable.updateables.append(self)
 
-	def update_self(self): {}
+	def update_self(self):
+		pass
 
 	@staticmethod
 	def update(dt):
 		Updateable.update_counter += dt
 
 		if Updateable.update_counter > Updateable.update_time:
+
+			global update_count
+			update_count += 1
+			print("\n\nStarting Moveables update " + str(update_count) + " at time " + str(time_count) + " seconds") if update_debug else 0
+
 			Updateable.update_counter = 0
 			for u in Updateable.updateables:
 				u.update_self(Updateable.update_time)
@@ -104,17 +116,22 @@ class Updateable:
 
 class Drawable:
 	drawables = []
+	top_layer = 0
 
-	def __init__(self, pos=[0,0], col=(255,255,255)):
+	def __init__(self, pos=[0,0], col=(255,255,255), layer=0):
 		self.position = pos
 		self.shape = [self.position[0], self.position[1], self.position[0] + size, self.position[1], self.position[0] + size, self.position[1] + size, self.position[0], self.position[1] + size]
 		self.colour = col
+		self.layer = layer
+		if layer > Drawable.top_layer:
+			Drawable.top_layer = layer
 		Drawable.drawables.append(self)
 
 	@staticmethod
 	def draw():
-		for d in Drawable.drawables:
-			d.draw_self()
+		for l in range(Drawable.top_layer+1): # Draws all drawables, lowest layers first
+			for d in Drawable.drawables:
+				d.draw_self() if d.layer == l else 0
 
 	def draw_self(self):
 		print("Colour :" + str((self.colour + self.colour + self.colour + self.colour))) if draw_debug else 0
@@ -124,36 +141,24 @@ class Drawable:
 	def delete(self):
 		Drawable.drawables.remove(self)
 
-class Moveable(Drawable):
-	moveables = []
-
-	update_time = 1
-	update_counter = 0
-
-	@staticmethod
-	def update(dt):
-		Moveable.update_counter += dt
-
-		if Moveable.update_counter > Moveable.update_time:
-			Moveable.update_counter = 0
-
-			for m in Moveable.moveables:
-				m.update_self(dt)
-				m.update_pos(dt)
+class Moveable(Drawable, Updateable):
+	moveables = {}
 
 	def __init__(self, pos=[0,0], col=(0,0,0)):
-		super(Moveable, self).__init__(pos, col)
-		if(self.collides()):
-			raise Exception("Don't stack the boxes, this is a 2D game!")
+		super(Moveable, self).__init__(pos, col, layer=1)
+		Updateable.__init__(self)
+
+		if(self.collides()[0]):
+			raise Exception("Don't stack the boxes, this is a 2D game! Collision at: " + str(self.position))
+			Drawable.delete(self)
 		else:
-			self.moveables.append(self)
-			self.speed = 2
+			Moveable.moveables[tuple(pos)] = self
 
 	def delete(self):
-		Drawable.drawables.remove(self)
-		Moveable.moveables.remove(self)
+		Drawable.delete(self)
+		del Moveable.moveables[tuple(self.position)]
 
-	def update_pos(self, dt):
+	def update_pos(self):
 		diff = [int(self.position[0] - self.shape[0]), int(self.position[1] - self.shape[1])]
 
 		for i in range(0, len(self.shape), 2):
@@ -175,29 +180,53 @@ class Moveable(Drawable):
 		self.move([1, 0])
 
 	def move(self, move_vec): # Moves the Moveable when given a vector [squares_x, squares_y]
-		distance_vec = [size * move_vec[0], size * move_vec[1]]
+		return_val = 1 # 1 If succesful, 0 if not 
+		distance_vec = [size * move_vec[0], size * move_vec[1]] # The distance it will move
+		new_pos = [self.position[0] + distance_vec[0], self.position[1] + distance_vec[1]] # The new position it will occupy
 
-		self.position[0] += distance_vec[0]
-		self.position[1] += distance_vec[1]
+		collision_type, collider = self.collides(new_pos)
 
-		if(self.collides()):
-			collision_type, collider = self.collides()
-			if(collision_type == 1):
-				collider.move(move_vec)
-				collider.update_pos(0)
-				self.position[0] = collider.position[0] - distance_vec[0]
-				self.position[1] = collider.position[1] - distance_vec[1]
+		if collision_type == 1:
+			print("  Attempting to push collider at " + str(self.position)) if collision_debug else 0
+			return_val = collider.move(move_vec)
+
+			if return_val:
+				print("  Moving from " + str(self.position) + " to " + str(new_pos)) if collision_debug else 0
+				self.change_pos(new_pos)
 			else:
-				self.position[0] -= distance_vec[0]
-				self.position[1] -= distance_vec[1]
+				print("  Move failed") if collision_debug else 0
 
-	def collides(self):
-		for x in Moveable.moveables:
-			if (x.position == self.position) and (x != self):
-				return 1, x
+		elif collision_type == 2:
+			print("  Ran into a wall at " + str(self.position)) if collision_debug else 0
+			return_val = 0
 
-		if (self.position[0] > window_width-size) or (self.position[0] < 0) or (self.position[1] > window_height-size) or (self.position[1] < 0):
+		else:
+			print("  Moving from " + str(self.position) + " to " + str(new_pos)) if collision_debug else 0
+			self.change_pos(new_pos)
+
+		self.update_pos()
+		return return_val
+
+	def change_pos(self, new_pos): # Changes position in both the moveables dict and the position variable
+		del Moveable.moveables[tuple(self.position)]
+		Moveable.moveables[tuple(new_pos)] = self
+		self.position = new_pos
+
+	def collides(self, pos=[-1,-1]): # Tells if that position collides with anything, returns the type of collision and colliders if any
+
+		pos = self.position if pos == [-1,-1] else pos
+		print("\nTesting collisions at " + str(pos)) if collision_debug else 0
+
+		x = Moveable.moveables.get(tuple(pos), 0)
+		if x:
+			print("  Collision with Moveable") if collision_debug else 0
+			return 1, x
+
+		if (pos[0] > window_width-size) or (pos[0] < 0) or (pos[1] > window_height-size) or (pos[1] < 0):
+			print("  Collision with Wall") if collision_debug else 0
 			return 2, 0
+
+		return 0, 0
 
 class Robot(Moveable):
 	def __init__(self, pos=[0,0], col=(0,255,0)):
@@ -288,62 +317,57 @@ class Robot(Moveable):
 	def sensor(self, side=""):
 		print("    Sensor called on side: " + side) if parser_debug else 0
 
-		f = lambda d: 1 if ((d.position[0] - self.position[0] == size or -size) and (d.position[size] - self.position[size] == size or -size)) else 0
-
 		if side == "w":
-			f = lambda d: 1 if (d.position[0] == self.position[0]) and (d.position[1] - self.position[1] == size) else 0
+			vector = [self.position[0], self.position[1] + size]
 		elif side == "a":
-			f = lambda d: 1 if (d.position[1] == self.position[1]) and (d.position[0] - self.position[0] == -size) else 0
+			vector = [self.position[0] - size, self.position[1]]
 		elif side == "s":
-			f = lambda d: 1 if (d.position[0] == self.position[0]) and (d.position[1] - self.position[1] == -size) else 0
+			vector = [self.position[0], self.position[1] - size]
 		elif side == "d":
-			f = lambda d: 1 if (d.position[1] == self.position[1]) and (d.position[0] - self.position[0] == size) else 0
+			vector = [self.position[0] + size, self.position[1]]
 
-		for m in Moveable.moveables:
-			if f(m):
-				return 1
-
-		return 0
+		return (self.collides(vector)[0] == 1)
 
 class Box(Moveable):
 	def __init__(self, pos=[0,0], col=(0,0,255)):
 		super(Box, self).__init__(pos, col)
 
 class Conveyor(Drawable, Updateable):
-	conveyors = []
+	conveyors = {}
 
 	def __init__(self, pos=[0,0], col=(255,255,0), dir="w"):
 		super(Conveyor, self).__init__(pos, col)
 		Updateable.__init__(self)
 		self.dir = dir
 
-		for c in Conveyor.conveyors: #Avoids double ups, as there is no inbuilt collision detection
-			if (c.position == self.position) and (c.dir == self.dir):
-				return
+		if tuple(self.position) in Conveyor.conveyors: # Avoids double ups
+			del Conveyor.conveyors[tuple(self.position)]
 
-		Conveyor.conveyors.append(self)
+		Conveyor.conveyors[tuple(self.position)] = self
 
 	def update_self(self, dt):
 		print("Conveyor Direction: " + self.dir) if conveyor_debug else 0
-		for m in Moveable.moveables:
-			if m.position == self.position:
-				if self.dir == "w":
-					m.move_up()
-				elif self.dir == "a":
-					m.move_left()
-				elif self.dir == "s":
-					m.move_down()
-				elif self.dir == "d":
-					m.move_right()
-				print("Found Moveable and moved it") if conveyor_debug else 0
-				return
+		if tuple(self.position) in Moveable.moveables:
+			m = Moveable.moveables[tuple(self.position)]
+
+			if self.dir == "w":
+				m.move_up()
+			elif self.dir == "a":
+				m.move_left()
+			elif self.dir == "s":
+				m.move_down()
+			elif self.dir == "d":
+				m.move_right()
+			print("Found Moveable and moved it") if conveyor_debug else 0
+			return
 
 	def delete(self):
 		Drawable.delete(self)
-		Conveyor.conveyors.remove(self)
+		Updateable.delete(self)
+		del Conveyor.conveyors[tuple(self.position)]
 
 class Programmer(Drawable, Updateable):
-	programmers = []
+	programmers = {}
 
 	def __init__(self, pos=[0,0], col=(210,210,210), program=""):
 		super(Programmer, self).__init__(pos, col)
@@ -351,34 +375,33 @@ class Programmer(Drawable, Updateable):
 
 		self.program = program
 
-		for p in Programmer.programmers: # A new programmer placecd on an old one will replace it
-			if(p.position == self.position):
-				Programmer.programmers.remove(p)
+		if tuple(self.position) in Programmer.programmers: # A new programmer placecd on an old one will replace it
+			del Programmer.programmers[tuple(self.position)]
 
-		Programmer.programmers.append(self)
+		Programmer.programmers[tuple(self.position)] = self
 		print("Programmer succesfully added") if programmer_debug else 0
 
 	def update_self(self, dt):
 		print("Programmer updating self") if programmer_debug else 0
 
-		for m in Moveable.moveables:
-			if m.position == self.position:
-				print("Something in the same position") if programmer_debug else 0
-				if type(m) is Robot:
-					m.set_instruction(self.program)
-					print("Programmed a robot") if programmer_debug else 0
+		if tuple(self.position) in Moveable.moveables:
+			m = Moveable.moveables[tuple(self.position)]
+			print("  Something in the same position") if programmer_debug else 0
+			if type(m) is Robot:
+				m.set_instruction(self.program)
+				print("  Programmed a robot") if programmer_debug else 0
 
 	def delete(self):
 		Drawable.delete(self)
 		Updateable.delete(self)
-		Programmer.programmers.remove(self)
+		del Programmer.programmers[tuple(self.position)]
 
 	def set_instruction(self, instruction):
 		self.program = instruction
 		print("Programmer programmed") if programmer_debug else 0
 
 class Delivery_Block(Drawable, Updateable):
-	delivery_blocks = []
+	delivery_blocks = {}
 
 	def __init__(self, pos=[0,0], col=[30,30,30], delivering=1, time=1):
 		super(Delivery_Block, self).__init__(pos, col)
@@ -388,13 +411,11 @@ class Delivery_Block(Drawable, Updateable):
 		self.time = time
 		self.counter = 0
 
-		for d in Delivery_Block.delivery_blocks:
-			if self.position == d.position:
-				d.delete()
-				print("Delivery Block Overlap Detected") if delivery_debug else 0
-				continue
+		if tuple(self.position) in Delivery_Block.delivery_blocks:
+			del Delivery_Block.delivery_blocks[tuple(self.position)]
+			print("Delivery Block Overlap Detected") if delivery_debug else 0
 
-		Delivery_Block.delivery_blocks.append(self)
+		Delivery_Block.delivery_blocks[tuple(self.position)] = self
 		print("Delivery Block created\n  Delivering: " + str(delivering) + "\n  Time: " + str(time)) if delivery_debug else 0
 
 	def update_self(self, dt):
@@ -406,13 +427,13 @@ class Delivery_Block(Drawable, Updateable):
 			self.counter = 0
 			print("Updating Delivery Block \n  Position: " + str(self.position) + "\n  Delivering: " + str(self.delivering) + "\n  Time: " + str(self.time)) if delivery_debug else 0
 
-			for m in Moveable.moveables:
-				if m.position == self.position:
-					if (type(m) is Box) and (self.delivering == 0):
-						m.delete()
-						score += 1
-						print("    Taking Box to Deliver") if delivery_debug else 0
-					return
+			if tuple(self.position) in Moveable.moveables:
+				m = Moveable.moveables[tuple(self.position)]
+				if (type(m) is Box) and (self.delivering == 0):
+					m.delete()
+					score += 1
+					print("    Taking Box to Deliver") if delivery_debug else 0
+				return
 
 			if self.delivering:
 				Box(pos=[self.position[0], self.position[1]])
@@ -424,7 +445,7 @@ class Delivery_Block(Drawable, Updateable):
 	def delete(self):
 		Drawable.delete(self)
 		Updateable.delete(self)
-		Delivery_Block.delivery_blocks.remove(self)
+		del Delivery_Block.delivery_blocks[tuple(self.position)]
 
 window = Main_Window()
 pyglet.app.run()
