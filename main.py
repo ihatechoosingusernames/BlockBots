@@ -147,6 +147,8 @@ class Moveable(Drawable, Updateable):
 	def __init__(self, pos=[0,0], col=(0,0,0)):
 		super(Moveable, self).__init__(pos, col, layer=1)
 		Updateable.__init__(self)
+		self.move_limit = 1 # Total distance moveable can travel in a single update.
+		self.move_count = 0 # Total distance moveable has moved in this update
 
 		if(self.collides()[0]):
 			raise Exception("Don't stack the boxes, this is a 2D game! Collision at: " + str(self.position))
@@ -165,7 +167,8 @@ class Moveable(Drawable, Updateable):
 			self.shape[i] += diff[0]
 			self.shape[i+1] += diff[1]
 
-	def update_self(self, dt): {}
+	def update_self(self, dt):
+		self.move_count = 0
 
 	def move_up(self):
 		self.move([0, 1])
@@ -180,7 +183,13 @@ class Moveable(Drawable, Updateable):
 		self.move([1, 0])
 
 	def move(self, move_vec): # Moves the Moveable when given a vector [squares_x, squares_y]
-		return_val = 1 # 1 If succesful, 0 if not 
+		if self.move_count >= self.move_limit:
+			return 0
+
+		self.move_count += abs(move_vec[0]) + abs(move_vec[1])
+
+		return_val = 1 # 1 If succesful, 0 if not
+
 		distance_vec = [size * move_vec[0], size * move_vec[1]] # The distance it will move
 		new_pos = [self.position[0] + distance_vec[0], self.position[1] + distance_vec[1]] # The new position it will occupy
 
