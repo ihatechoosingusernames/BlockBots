@@ -4,21 +4,23 @@ from pyglet.gl import *
 from pyglet.window import key
 from pyglet.window import mouse
 
-size = 20
-window_width = 800
-window_height = 600
+from Updateable import Updateable
+from Drawable 	import Drawable
+from Moveable 	import Moveable
+from Robot 		import Robot
+from Box 		import Box
+from Conveyor 	import Conveyor
+from Programmer import Programmer
+from Delivery_Block import Delivery_Block
+from Config		import Config
 
-score = 0
-update_count = 0
-time_count = 0
+cfg = Config()
 
-parser_debug 		= 0 	# Change these to 1 for various debugging printouts
-conveyor_debug 		= 0
-draw_debug 			= 0
-programmer_debug	= 0
-delivery_debug 		= 0
-collision_debug 	= 0
-update_debug		= 0
+window_width 	= cfg.window_width
+window_height 	= cfg.window_height
+time_count 		= cfg.time_count
+score 			= cfg.score
+size 			= cfg.size
 
 class Main_Window(pyglet.window.Window):
 	def __init__(self):
@@ -34,14 +36,24 @@ class Main_Window(pyglet.window.Window):
 
 		self.map_init()
 
-	def map_init(self): {}
+	def map_init(self):
+		Robot(pos=[20,0])
+		Box(pos=[20,20])
+		Delivery_Block(pos=[20,60], delivering=1, time=2)
+		Programmer([20,40], program="(0,w,w->1)(1,s,->2)(2,,)")
+		Conveyor(pos=[20,80], dir="d")
+		Box(pos=[20,80])
+		Conveyor(pos=[40,80], dir="d")
+		Delivery_Block(pos=[60,80], delivering=0, time=2)
+
+		Robot(pos=[100,100])
+		Box(pos=[120,100])
 
 	def update(self, dt):
 		global time_count
 		time_count += dt
 		if(dt != 0):
-			Updateable.update(dt)
-			Moveable.update(dt)
+			Updateable.update(dt, time_count)
 			self.score = pyglet.text.Label(text=str(score), x=int(window_width/2), y=int(window_height-15), bold=1)
 
 	def on_draw(self):
@@ -84,377 +96,6 @@ class Main_Window(pyglet.window.Window):
 				for d in Drawable.drawables:
 					if d.position == position:
 						d.delete()
-
-class Updateable:
-	updateables = []
-
-	update_counter = 0
-	update_time = 1
-
-	def __init__(self):
-		Updateable.updateables.append(self)
-
-	def update_self(self):
-		pass
-
-	@staticmethod
-	def update(dt):
-		Updateable.update_counter += dt
-
-		if Updateable.update_counter > Updateable.update_time:
-
-			global update_count
-			update_count += 1
-			print("\n\nStarting Moveables update " + str(update_count) + " at time " + str(time_count) + " seconds") if update_debug else 0
-
-			Updateable.update_counter = 0
-			for u in Updateable.updateables:
-				u.update_self(Updateable.update_time)
-
-	def delete(self):
-		Updateable.updateables.remove(self)
-
-class Drawable:
-	drawables = []
-	top_layer = 0
-
-	def __init__(self, pos=[0,0], col=(255,255,255), layer=0):
-		self.position = pos
-		self.shape = [self.position[0], self.position[1], self.position[0] + size, self.position[1], self.position[0] + size, self.position[1] + size, self.position[0], self.position[1] + size]
-		self.colour = col
-		self.layer = layer
-		if layer > Drawable.top_layer:
-			Drawable.top_layer = layer
-		Drawable.drawables.append(self)
-
-	@staticmethod
-	def draw():
-		for l in range(Drawable.top_layer+1): # Draws all drawables, lowest layers first
-			for d in Drawable.drawables:
-				d.draw_self() if d.layer == l else 0
-
-	def draw_self(self):
-		print("Colour :" + str((self.colour + self.colour + self.colour + self.colour))) if draw_debug else 0
-		
-		pyglet.graphics.draw(4, pyglet.gl.GL_QUADS, ('v2i', self.shape), ('c3B', (self.colour + self.colour + self.colour + self.colour)))
-
-	def delete(self):
-		Drawable.drawables.remove(self)
-
-class Moveable(Drawable, Updateable):
-	moveables = {}
-
-	def __init__(self, pos=[0,0], col=(0,0,0)):
-		super(Moveable, self).__init__(pos, col, layer=1)
-		Updateable.__init__(self)
-		self.move_limit = 1 # Total distance moveable can travel in a single update.
-		self.move_count = 0 # Total distance moveable has moved in this update
-
-		if(self.collides()[0]):
-			raise Exception("Don't stack the boxes, this is a 2D game! Collision at: " + str(self.position))
-			Drawable.delete(self)
-		else:
-			Moveable.moveables[tuple(pos)] = self
-
-	def delete(self):
-		Drawable.delete(self)
-		del Moveable.moveables[tuple(self.position)]
-
-	def update_pos(self):
-		diff = [int(self.position[0] - self.shape[0]), int(self.position[1] - self.shape[1])]
-
-		for i in range(0, len(self.shape), 2):
-			self.shape[i] += diff[0]
-			self.shape[i+1] += diff[1]
-
-	def update_self(self, dt):
-		self.move_count = 0
-
-	def move_up(self):
-		self.move([0, 1])
-
-	def move_down(self):
-		self.move([0, -1])
-
-	def move_left(self):
-		self.move([-1, 0])
-
-	def move_right(self):
-		self.move([1, 0])
-
-	def move(self, move_vec): # Moves the Moveable when given a vector [squares_x, squares_y]
-		if self.move_count >= self.move_limit:
-			return 0
-
-		self.move_count += abs(move_vec[0]) + abs(move_vec[1])
-
-		return_val = 1 # 1 If succesful, 0 if not
-
-		distance_vec = [size * move_vec[0], size * move_vec[1]] # The distance it will move
-		new_pos = [self.position[0] + distance_vec[0], self.position[1] + distance_vec[1]] # The new position it will occupy
-
-		collision_type, collider = self.collides(new_pos)
-
-		if collision_type == 1:
-			print("  Attempting to push collider at " + str(self.position)) if collision_debug else 0
-			return_val = collider.move(move_vec)
-
-			if return_val:
-				print("  Moving from " + str(self.position) + " to " + str(new_pos)) if collision_debug else 0
-				self.change_pos(new_pos)
-			else:
-				print("  Move failed") if collision_debug else 0
-
-		elif collision_type == 2:
-			print("  Ran into a wall at " + str(self.position)) if collision_debug else 0
-			return_val = 0
-
-		else:
-			print("  Moving from " + str(self.position) + " to " + str(new_pos)) if collision_debug else 0
-			self.change_pos(new_pos)
-
-		self.update_pos()
-		return return_val
-
-	def change_pos(self, new_pos): # Changes position in both the moveables dict and the position variable
-		del Moveable.moveables[tuple(self.position)]
-		Moveable.moveables[tuple(new_pos)] = self
-		self.position = new_pos
-
-	def collides(self, pos=[-1,-1]): # Tells if that position collides with anything, returns the type of collision and colliders if any
-
-		pos = self.position if pos == [-1,-1] else pos
-		print("\nTesting collisions at " + str(pos)) if collision_debug else 0
-
-		x = Moveable.moveables.get(tuple(pos), 0)
-		if x:
-			print("  Collision with Moveable") if collision_debug else 0
-			return 1, x
-
-		if (pos[0] > window_width-size) or (pos[0] < 0) or (pos[1] > window_height-size) or (pos[1] < 0):
-			print("  Collision with Wall") if collision_debug else 0
-			return 2, 0
-
-		return 0, 0
-
-class Robot(Moveable):
-	def __init__(self, pos=[0,0], col=(0,255,0)):
-		super(Robot, self).__init__(pos, col)
-		self.instruction = "(1,,w->2/a->3/s->4/d->5)(2,w,)(3,a,)(4,s,)(5,d,)"
-		self.current_instruction = ["", -1] # The name of the current instruction and the number of actions still to go within that instruction
-
-	def update_self(self, dt):
-		self.run_instruction()
-
-	def set_instruction(self, inst):
-		self.instruction = inst
-		self.current_instruction = [inst.split("(")[0].split(",")[0], -1] # Sets current instruction to first instruction name
-
-	# Runs robot instructions of format: (Instruction Name,Actions,Transitions)
-	def run_instruction(self):
-		if len(self.instruction) < 1: # Checks that there are instructions to use 
-			return
-
-		inst_pos = self.instruction.find("(" + self.current_instruction[0]) + 1
-		inst = self.instruction[inst_pos : self.instruction.index(")", inst_pos)] # Finds the definition of the current instruction
-
-		inst_parts = inst.split(",") # Splits instruction into its parts
-
-		print("Instruction Parts:\n  Name: " + inst_parts[0] + "\n  Actions: " + inst_parts[1] + "\n  Transitions: " + inst_parts[2]) if parser_debug else 0
-
-		actions = inst_parts[1] # Should be the Actions part of the instruction
-
-		if len(actions) > 0: # Only runs the action code if there are actions
-
-			if self.current_instruction[1] < 0: # Checks if this is a new instruction and sets the action count if so
-				self.current_instruction[1] = len(actions)
-
-			action_index = len(actions) - self.current_instruction[1]
-			print("  Action Number: " + str(action_index)) if parser_debug else 0
-			self.current_instruction[1] -= 1
-
-			if  actions[action_index] == 'w':
-				self.move_up()
-			elif actions[action_index] == 's':
-				self.move_down()
-			elif actions[action_index] == 'a':
-				self.move_left()
-			elif actions[action_index] == 'd':
-				self.move_right()
-
-		if self.current_instruction[1] < 1: # Checks if that was the last instruction
-			self.current_instruction[1] = -1 # Sets to new instruction special value
-
-			transitions = inst_parts[2].split("/") # Delimiting the transitions, format is: Transition_Rule_1->Destination/Transition_Rule_2->Destination etc.
-			print("\nTransitions:") if parser_debug else 0
-
-			for t in transitions: # Finding the transition that passes first
-				print("  Transition Rule: " + t) if parser_debug else 0
-
-				condition = t.split("->")[0] # Splitting it into rule and destination
-				operator_stack = ["|"] # This ensures the first value is considered if there is no operator before it
-				evaluation = 1 if (not len(condition)) and len(t) else 0 # The result of the transition rule
-				for c in condition: # Parsing is very basic at the moment
-					print("    Parsing Character: " + c + "    Operator Stack: " + str(len(operator_stack))) if parser_debug else 0
-
-					if (c == 'w') or (c == 'a') or (c == 's') or (c == 'd'):
-						c_result = self.sensor(c) # Find the initial value of that sensor reading
-						print("    Sensor Result: " + str(c_result)) if parser_debug else 0
-						p = operator_stack.pop(len(operator_stack)-1) # Find the most recent operator for it
-
-						if p == "!": # The "not" operator is used in conjunction with other operators, so the next is popped
-							c_result = not c_result
-							p = operator_stack.pop(len(operator_stack)-1)
-
-						if p == "&":
-							evaluation = evaluation and c_result
-						elif p == "|":
-							evaluation = evaluation or c_result
-
-						print("    Parsed  Character: " + c + "    Operator Stack: " + str(len(operator_stack)) + "    Result So Far: " + str(evaluation)) if parser_debug else 0
-
-					else: # Add all operators to operator stack
-						operator_stack.append(c)
-						print("    Parsed   Operator: " + c + "    Operator Stack: " + str(len(operator_stack))) if parser_debug else 0
-
-				if evaluation: # The first transition that evaluates true is used, if none do, the current rule loops forever
-					self.current_instruction[0] = t.split("->")[1]
-					print("  Transition Accepted, New Instruction: " + self.current_instruction[0]) if parser_debug else 0
-					return
-
-	# The sensor returns true if there is something occupying the specified adjacent space, default argument is any space, diagonals not included
-	def sensor(self, side=""):
-		print("    Sensor called on side: " + side) if parser_debug else 0
-
-		if side == "w":
-			vector = [self.position[0], self.position[1] + size]
-		elif side == "a":
-			vector = [self.position[0] - size, self.position[1]]
-		elif side == "s":
-			vector = [self.position[0], self.position[1] - size]
-		elif side == "d":
-			vector = [self.position[0] + size, self.position[1]]
-
-		return (self.collides(vector)[0] == 1)
-
-class Box(Moveable):
-	def __init__(self, pos=[0,0], col=(0,0,255)):
-		super(Box, self).__init__(pos, col)
-
-class Conveyor(Drawable, Updateable):
-	conveyors = {}
-
-	def __init__(self, pos=[0,0], col=(255,255,0), dir="w"):
-		super(Conveyor, self).__init__(pos, col)
-		Updateable.__init__(self)
-		self.dir = dir
-
-		if tuple(self.position) in Conveyor.conveyors: # Avoids double ups
-			del Conveyor.conveyors[tuple(self.position)]
-
-		Conveyor.conveyors[tuple(self.position)] = self
-
-	def update_self(self, dt):
-		print("Conveyor Direction: " + self.dir) if conveyor_debug else 0
-		if tuple(self.position) in Moveable.moveables:
-			m = Moveable.moveables[tuple(self.position)]
-
-			if self.dir == "w":
-				m.move_up()
-			elif self.dir == "a":
-				m.move_left()
-			elif self.dir == "s":
-				m.move_down()
-			elif self.dir == "d":
-				m.move_right()
-			print("Found Moveable and moved it") if conveyor_debug else 0
-			return
-
-	def delete(self):
-		Drawable.delete(self)
-		Updateable.delete(self)
-		del Conveyor.conveyors[tuple(self.position)]
-
-class Programmer(Drawable, Updateable):
-	programmers = {}
-
-	def __init__(self, pos=[0,0], col=(210,210,210), program=""):
-		super(Programmer, self).__init__(pos, col)
-		Updateable.__init__(self)
-
-		self.program = program
-
-		if tuple(self.position) in Programmer.programmers: # A new programmer placecd on an old one will replace it
-			del Programmer.programmers[tuple(self.position)]
-
-		Programmer.programmers[tuple(self.position)] = self
-		print("Programmer succesfully added") if programmer_debug else 0
-
-	def update_self(self, dt):
-		print("Programmer updating self") if programmer_debug else 0
-
-		if tuple(self.position) in Moveable.moveables:
-			m = Moveable.moveables[tuple(self.position)]
-			print("  Something in the same position") if programmer_debug else 0
-			if type(m) is Robot:
-				m.set_instruction(self.program)
-				print("  Programmed a robot") if programmer_debug else 0
-
-	def delete(self):
-		Drawable.delete(self)
-		Updateable.delete(self)
-		del Programmer.programmers[tuple(self.position)]
-
-	def set_instruction(self, instruction):
-		self.program = instruction
-		print("Programmer programmed") if programmer_debug else 0
-
-class Delivery_Block(Drawable, Updateable):
-	delivery_blocks = {}
-
-	def __init__(self, pos=[0,0], col=[30,30,30], delivering=1, time=1):
-		super(Delivery_Block, self).__init__(pos, col)
-		Updateable.__init__(self)
-
-		self.delivering = delivering
-		self.time = time
-		self.counter = 0
-
-		if tuple(self.position) in Delivery_Block.delivery_blocks:
-			del Delivery_Block.delivery_blocks[tuple(self.position)]
-			print("Delivery Block Overlap Detected") if delivery_debug else 0
-
-		Delivery_Block.delivery_blocks[tuple(self.position)] = self
-		print("Delivery Block created\n  Delivering: " + str(delivering) + "\n  Time: " + str(time)) if delivery_debug else 0
-
-	def update_self(self, dt):
-
-		global score
-		self.counter += dt
-
-		if self.counter > self.time:
-			self.counter = 0
-			print("Updating Delivery Block \n  Position: " + str(self.position) + "\n  Delivering: " + str(self.delivering) + "\n  Time: " + str(self.time)) if delivery_debug else 0
-
-			if tuple(self.position) in Moveable.moveables:
-				m = Moveable.moveables[tuple(self.position)]
-				if (type(m) is Box) and (self.delivering == 0):
-					m.delete()
-					score += 1
-					print("    Taking Box to Deliver") if delivery_debug else 0
-				return
-
-			if self.delivering:
-				Box(pos=[self.position[0], self.position[1]])
-				print("    Delivering Box") if delivery_debug else 0
-			else:
-				score -= 1
-				print("    Missed a Delivery") if delivery_debug else 0
-
-	def delete(self):
-		Drawable.delete(self)
-		Updateable.delete(self)
-		del Delivery_Block.delivery_blocks[tuple(self.position)]
 
 window = Main_Window()
 pyglet.app.run()

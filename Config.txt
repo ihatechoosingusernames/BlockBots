@@ -1,0 +1,18 @@
+# CONFIG
+size = 20
+window_width = 800
+window_height = 600
+
+score = 0
+update_count = 0
+time_count = 0
+
+# Change these to 1 for various debugging printouts
+parser_debug 		= 0
+conveyor_debug 		= 0
+draw_debug 			= 0
+programmer_debug	= 0
+delivery_debug 		= 0
+collision_debug 	= 0
+update_debug		= 0
+move_debug			= 0
