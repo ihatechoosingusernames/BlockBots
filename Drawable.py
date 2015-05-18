@@ -1,6 +1,11 @@
 from pyglet.gl import *
 from Config		import Config
 
+cfg = Config()
+
+size = cfg.size
+draw_debug = cfg.draw_debug
+
 class Drawable:
 	drawables = []
 	top_layer = 0

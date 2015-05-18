@@ -12,7 +12,15 @@ from Box 		import Box
 from Conveyor 	import Conveyor
 from Programmer import Programmer
 from Delivery_Block import Delivery_Block
-import Config
+from Config		import Config
+
+cfg = Config()
+
+window_width 	= cfg.window_width
+window_height 	= cfg.window_height
+time_count 		= cfg.time_count
+score 			= cfg.score
+size 			= cfg.size
 
 class Main_Window(pyglet.window.Window):
 	def __init__(self):
@@ -28,7 +36,18 @@ class Main_Window(pyglet.window.Window):
 
 		self.map_init()
 
-	def map_init(self): {}
+	def map_init(self):
+		Robot(pos=[20,0])
+		Box(pos=[20,20])
+		Delivery_Block(pos=[20,60], delivering=1, time=2)
+		Programmer([20,40], program="(0,w,w->1)(1,s,->2)(2,,)")
+		Conveyor(pos=[20,80], dir="d")
+		Box(pos=[20,80])
+		Conveyor(pos=[40,80], dir="d")
+		Delivery_Block(pos=[60,80], delivering=0, time=2)
+
+		Robot(pos=[100,100])
+		Box(pos=[120,100])
 
 	def update(self, dt):
 		global time_count

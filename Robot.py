@@ -1,6 +1,11 @@
 from Moveable 	import Moveable
 from Config		import Config
 
+cfg = Config()
+
+size = cfg.size
+parser_debug = cfg.parser_debug
+
 class Robot(Moveable):
 	def __init__(self, pos=[0,0], col=(0,255,0)):
 		super(Robot, self).__init__(pos, col)
@@ -8,6 +13,7 @@ class Robot(Moveable):
 		self.current_instruction = ["", -1] # The name of the current instruction and the number of actions still to go within that instruction
 
 	def update_self(self, dt):
+		super(Robot, self).update_self(0)
 		self.run_instruction()
 
 	def set_instruction(self, inst):

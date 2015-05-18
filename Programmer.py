@@ -1,6 +1,11 @@
 from Updateable import Updateable
 from Drawable 	import Drawable
+from Moveable 	import Moveable
 from Config		import Config
+from Robot 		import Robot
+
+cfg = Config()
+programmer_debug = cfg.programmer_debug
 
 class Programmer(Drawable, Updateable):
 	programmers = {}

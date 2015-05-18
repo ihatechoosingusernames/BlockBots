@@ -2,6 +2,14 @@ from Updateable import Updateable
 from Drawable 	import Drawable
 from Config		import Config
 
+cfg = Config()
+
+size = cfg.size
+window_width = cfg.window_width
+window_height = cfg.window_height
+collision_debug = cfg.collision_debug
+move_debug = cfg.move_debug
+
 class Moveable(Drawable, Updateable):
 	moveables = {}
 
@@ -33,15 +41,19 @@ class Moveable(Drawable, Updateable):
 
 	def move_up(self):
 		self.move([0, 1])
+		print("Moving up at " + str(self.position)) if move_debug else 0
 
 	def move_down(self):
 		self.move([0, -1])
+		print("Moving down at " + str(self.position)) if move_debug else 0
 
 	def move_left(self):
 		self.move([-1, 0])
+		print("Moving left at " + str(self.position)) if move_debug else 0
 
 	def move_right(self):
 		self.move([1, 0])
+		print("Moving right at " + str(self.position)) if move_debug else 0
 
 	def move(self, move_vec): # Moves the Moveable when given a vector [squares_x, squares_y]
 		if self.move_count >= self.move_limit:
@@ -74,13 +86,13 @@ class Moveable(Drawable, Updateable):
 			print("  Moving from " + str(self.position) + " to " + str(new_pos)) if collision_debug else 0
 			self.change_pos(new_pos)
 
-		self.update_pos()
 		return return_val
 
 	def change_pos(self, new_pos): # Changes position in both the moveables dict and the position variable
 		del Moveable.moveables[tuple(self.position)]
 		Moveable.moveables[tuple(new_pos)] = self
 		self.position = new_pos
+		self.update_pos()
 
 	def collides(self, pos=[-1,-1]): # Tells if that position collides with anything, returns the type of collision and colliders if any
 

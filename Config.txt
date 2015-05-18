@@ -13,5 +13,6 @@ conveyor_debug 		= 0
 draw_debug 			= 0
 programmer_debug	= 0
 delivery_debug 		= 0
-collision_debug 	= 1
+collision_debug 	= 0
 update_debug		= 0
+move_debug			= 0

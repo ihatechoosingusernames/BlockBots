@@ -1,6 +1,12 @@
 from Updateable import Updateable
 from Drawable 	import Drawable
+from Moveable 	import Moveable
+from Box 		import Box
 from Config		import Config
+
+cfg = Config()
+delivery_debug = cfg.delivery_debug
+score = cfg.score
 
 class Delivery_Block(Drawable, Updateable):
 	delivery_blocks = {}

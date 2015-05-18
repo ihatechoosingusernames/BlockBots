@@ -21,6 +21,8 @@ class Config:
 					Config.parser_debug = int(line.split("= ")[1])
 				elif line.startswith("conveyor_debug"):
 					Config.conveyor_debug = int(line.split("= ")[1])
+				elif line.startswith("draw_debug"):
+					Config.draw_debug = int(line.split("= ")[1])
 				elif line.startswith("programmer_debug"):
 					Config.programmer_debug = int(line.split("= ")[1])
 				elif line.startswith("delivery_debug"):
@@ -29,3 +31,5 @@ class Config:
 					Config.collision_debug = int(line.split("= ")[1])
 				elif line.startswith("update_debug"):
 					Config.update_debug = int(line.split("= ")[1])
+				elif line.startswith("move_debug"):
+					Config.move_debug = int(line.split("= ")[1])
