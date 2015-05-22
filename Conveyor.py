@@ -34,7 +34,7 @@ class Conveyor(Drawable, Updateable):
 			elif self.dir == "d":
 				m.move_right()
 			print("Found Moveable and moved it") if conveyor_debug else 0
-			return 0
+			return
 
 	def delete(self):
 		Drawable.delete(self)
