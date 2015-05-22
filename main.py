@@ -36,11 +36,11 @@ class Main_Window(pyglet.window.Window):
 
 		self.map_init()
 
-	def map_init(self):
+	def map_init(self): # Just setting up the map to test it
 		Robot(pos=[20,0])
 		Box(pos=[20,20])
 		Delivery_Block(pos=[20,60], delivering=1, time=2)
-		Programmer([20,40], program="(0,w,w->1)(1,s,->2)(2,,)")
+		Programmer([20,40], program="(0,w,->1)(1,s,->2)(2,,)")
 		Conveyor(pos=[20,80], dir="d")
 		Box(pos=[20,80])
 		Conveyor(pos=[40,80], dir="d")
@@ -50,10 +50,10 @@ class Main_Window(pyglet.window.Window):
 		Box(pos=[120,100])
 
 	def update(self, dt):
-		global time_count
+		global time_count, score
 		time_count += dt
 		if(dt != 0):
-			Updateable.update(dt, time_count)
+			score += Updateable.update(dt, time_count)
 			self.score = pyglet.text.Label(text=str(score), x=int(window_width/2), y=int(window_height-15), bold=1)
 
 	def on_draw(self):
