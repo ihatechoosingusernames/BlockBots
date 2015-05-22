@@ -28,7 +28,7 @@ class Delivery_Block(Drawable, Updateable):
 
 	def update_self(self, dt):
 
-		global score
+		score = 0
 		self.counter += dt
 
 		if self.counter > self.time:
@@ -41,7 +41,7 @@ class Delivery_Block(Drawable, Updateable):
 					m.delete()
 					score += 1
 					print("    Taking Box to Deliver") if delivery_debug else 0
-				return
+				return score
 
 			if self.delivering:
 				Box(pos=[self.position[0], self.position[1]])
@@ -49,6 +49,7 @@ class Delivery_Block(Drawable, Updateable):
 			else:
 				score -= 1
 				print("    Missed a Delivery") if delivery_debug else 0
+		return score
 
 	def delete(self):
 		Drawable.delete(self)

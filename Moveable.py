@@ -38,6 +38,7 @@ class Moveable(Drawable, Updateable):
 
 	def update_self(self, dt):
 		self.move_count = 0
+		return 0
 
 	def move_up(self):
 		self.move([0, 1])

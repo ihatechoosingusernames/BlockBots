@@ -15,7 +15,7 @@ class Updateable:
 		Updateable.updateables.append(self)
 
 	def update_self(self):
-		pass
+		return 0
 
 	@staticmethod
 	def update(dt, time):
@@ -23,6 +23,7 @@ class Updateable:
 		Updateable.update_counter += dt
 
 		if Updateable.update_counter > Updateable.update_time:
+			score = 0
 
 			Updateable.update_counter = 0
 			update_count += 1
@@ -30,7 +31,11 @@ class Updateable:
 			print("\n\nStarting Moveables update " + str(update_count) + " on " + str(len(Updateable.updateables)) + " updateables at time " + str(time) + " seconds") if update_debug else 0
 
 			for u in Updateable.updateables:
-				u.update_self(Updateable.update_time)
+				tentative_score = u.update_self(Updateable.update_time)
+				score += tentative_score if type(tentative_score) is int else 0
+
+			return score
+		return 0
 
 	def delete(self):
 		Updateable.updateables.remove(self)
