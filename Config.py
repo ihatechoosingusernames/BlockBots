@@ -33,3 +33,5 @@ class Config:
 					Config.update_debug = int(line.split("= ")[1])
 				elif line.startswith("move_debug"):
 					Config.move_debug = int(line.split("= ")[1])
+				elif line.startswith("visualiser_debug"):
+					Config.visualiser_debug = int(line.split("= ")[1])

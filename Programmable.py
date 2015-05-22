@@ -2,14 +2,30 @@ from Config import Config
 
 cfg = Config()
 parser_debug = cfg.parser_debug
+size = cfg.size
 
 class Programmable:
-	def __init__(self, instruction="(1,,w->2/a->3/s->4/d->5)(2,w,)(3,a,)(4,s,)(5,d,)"):
-		self.set_instruction(instruction)
+	def __init__(self, instruction=""):
+		self.instruction = instruction # Not using set_instruction due to it being overridden by subclasses
+		self.current_instruction = [instruction.split("(")[1].split(",")[0], -1]
 
 	def set_instruction(self, inst):
 		self.instruction = inst
-		self.current_instruction = [inst.split("(")[0].split(",")[0], -1] # Sets current instruction to first instruction name
+		self.current_instruction = [inst.split("(")[1].split(",")[0], -1] # Sets current instruction to first instruction name
+
+	def sensor(self, side=""):
+		print("    Sensor called on side: " + side) if parser_debug else 0
+
+		if side == "w":
+			vector = [self.position[0], self.position[1] + size]
+		elif side == "a":
+			vector = [self.position[0] - size, self.position[1]]
+		elif side == "s":
+			vector = [self.position[0], self.position[1] - size]
+		elif side == "d":
+			vector = [self.position[0] + size, self.position[1]]
+
+		return (self.collides(vector)[0] == 1)
 
 	def run_instruction(self):
 		if len(self.instruction) < 1: # Checks that there are instructions to use 
