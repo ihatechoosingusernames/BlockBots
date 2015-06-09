@@ -1,8 +1,7 @@
 from Config import Config
 
-cfg = Config()
-parser_debug = cfg.parser_debug
-size = cfg.size
+parser_debug = Config.get_val("parser_debug")
+size = Config.get_val("size")
 
 class Programmable:
 	def __init__(self, instruction=""):

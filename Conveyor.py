@@ -3,9 +3,7 @@ from Drawable 	import Drawable
 from Moveable 	import Moveable
 from Config		import Config
 
-cfg = Config()
-
-conveyor_debug = cfg.conveyor_debug
+conveyor_debug = Config.get_val("conveyor_debug")
 
 class Conveyor(Drawable, Updateable):
 	conveyors = {}

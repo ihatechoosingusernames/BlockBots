@@ -14,13 +14,11 @@ from Delivery_Block import Delivery_Block
 from Config		import Config
 from Program_Visualiser import Program_Visualiser
 
-cfg = Config()
-
-window_width 	= cfg.window_width
-window_height 	= cfg.window_height
-time_count 		= cfg.time_count
-score 			= cfg.score
-size 			= cfg.size
+window_height 	= Config.get_val("window_height")
+window_width 	= Config.get_val("window_width")
+score			= Config.get_val("score")
+time_count		= Config.get_val("time_count")
+size			= Config.get_val("size")
 
 class Main_Window(pyglet.window.Window):
 	def __init__(self):
@@ -40,7 +38,7 @@ class Main_Window(pyglet.window.Window):
 		Robot(pos=[20,0])
 		Box(pos=[20,20])
 		Delivery_Block(pos=[20,60], delivering=1, time=2)
-		Programmer([20,40], program="(0,w,->1)(1,s,->2)(2,,)")
+		Programmer([20,40], program="(0,w,->1)(1,s,)")
 		Conveyor(pos=[20,80], dir="d")
 		Box(pos=[20,80])
 		Conveyor(pos=[40,80], dir="d")

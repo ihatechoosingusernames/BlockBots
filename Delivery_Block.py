@@ -4,9 +4,8 @@ from Moveable 	import Moveable
 from Box 		import Box
 from Config		import Config
 
-cfg = Config()
-delivery_debug = cfg.delivery_debug
-score = cfg.score
+delivery_debug = Config.get_val("delivery_debug")
+score = Config.get_val("score")
 
 class Delivery_Block(Drawable, Updateable):
 	delivery_blocks = {}

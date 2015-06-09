@@ -2,9 +2,7 @@ from Moveable 	import Moveable
 from Programmable import Programmable
 from Config		import Config
 
-cfg = Config()
-
-size = cfg.size
+size = Config.get_val("size")
 
 class Robot(Moveable, Programmable):
 	def __init__(self, pos=[0,0], col=(0,255,0), instruction="(1,,w->2/a->3/s->4/d->5)(2,w,)(3,a,)(4,s,)(5,d,)"):

@@ -1,9 +1,7 @@
 from Config		import Config
 
-cfg = Config()
-
-update_debug = cfg.update_debug
-update_count = cfg.update_count
+update_debug = Config.get_val("update_debug")
+update_count = Config.get_val("update_count")
 
 class Updateable:
 	updateables = []

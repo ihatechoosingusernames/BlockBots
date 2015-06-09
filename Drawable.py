@@ -1,10 +1,8 @@
 from pyglet.gl import *
 from Config		import Config
 
-cfg = Config()
-
-size = cfg.size
-draw_debug = cfg.draw_debug
+size = Config.get_val("size")
+draw_debug = Config.get_val("draw_debug")
 
 class Drawable:
 	drawables = []
