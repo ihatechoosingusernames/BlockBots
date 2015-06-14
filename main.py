@@ -98,7 +98,7 @@ class Main_Window(pyglet.window.Window):
 							self.selected = 0
 						d.delete()
 			elif self.instruction.startswith("program visualiser"):
-				self.selected = Program_Visualiser(pos=position)
+				self.selected = Program_Visualiser(pos=position, instruction=self.instruction.split("program visualiser")[1])
 
 window = Main_Window()
 pyglet.app.run()

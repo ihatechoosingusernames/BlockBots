@@ -12,8 +12,6 @@ class Program_Visualiser(Programmable, Drawable):
 	total_visualisers = 0
 
 	def __init__(self, pos, instruction="(1,,w->2/a->3/s->4/d->5)(2,w,)(3,a,)(4,s,)(5,d,)", current_instruction=0, recursion=0):
-		if recursion > Program_Visualiser.max_recursion:
-			return
 
 		super(Program_Visualiser, self).__init__(instruction)
 		Drawable.__init__(self, pos, (120, 10, 120), 1)
@@ -31,7 +29,9 @@ class Program_Visualiser(Programmable, Drawable):
 			super(Program_Visualiser, self).set_instruction(instruction)
 
 		print("\nNew Program Visualiser\nPosition: " + str(pos) + "\nInstruction: " + instruction +  "\nCurrent Instruction: " + str(self.current_instruction) + "\nRecursion Level: " + str(recursion) + "\nTotal Visualisers: " + str(Program_Visualiser.total_visualisers)) if visualiser_debug else 0
-		self.run()
+		
+		if recursion < Program_Visualiser.max_recursion:
+			self.run()
 
 	def run(self):
 		if self.current_instruction[1] < 2: # If this instruction is the last one before transitioning
@@ -104,5 +104,5 @@ class Program_Visualiser(Programmable, Drawable):
 		print("Program Visualiser deleted at: " + str(self.position) + "  With Children at:") if visualiser_debug else 0
 		for c in self.children:
 			print("  " + str(c.position)) if visualiser_debug else 0
-			c.delete
+			c.delete()
 		Drawable.delete(self)
