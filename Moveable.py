@@ -2,13 +2,11 @@ from Updateable import Updateable
 from Drawable 	import Drawable
 from Config		import Config
 
-cfg = Config()
-
-size = cfg.size
-window_width = cfg.window_width
-window_height = cfg.window_height
-collision_debug = cfg.collision_debug
-move_debug = cfg.move_debug
+size = Config.get_val("size")
+window_width = Config.get_val("window_width")
+window_height = Config.get_val("window_height")
+collision_debug = Config.get_val("collision_debug")
+move_debug = Config.get_val("move_debug")
 
 class Moveable(Drawable, Updateable):
 	moveables = {}
@@ -38,6 +36,7 @@ class Moveable(Drawable, Updateable):
 
 	def update_self(self, dt):
 		self.move_count = 0
+		return 0
 
 	def move_up(self):
 		self.move([0, 1])

@@ -6,21 +6,19 @@ from pyglet.window import mouse
 
 from Updateable import Updateable
 from Drawable 	import Drawable
-from Moveable 	import Moveable
 from Robot 		import Robot
 from Box 		import Box
 from Conveyor 	import Conveyor
 from Programmer import Programmer
 from Delivery_Block import Delivery_Block
 from Config		import Config
+from Program_Visualiser import Program_Visualiser
 
-cfg = Config()
-
-window_width 	= cfg.window_width
-window_height 	= cfg.window_height
-time_count 		= cfg.time_count
-score 			= cfg.score
-size 			= cfg.size
+window_height 	= Config.get_val("window_height")
+window_width 	= Config.get_val("window_width")
+score			= Config.get_val("score")
+time_count		= Config.get_val("time_count")
+size			= Config.get_val("size")
 
 class Main_Window(pyglet.window.Window):
 	def __init__(self):
@@ -28,7 +26,7 @@ class Main_Window(pyglet.window.Window):
 		self.set_caption("BlockBots!")
 
 		self.selected = 0
-		self.instruction = ""
+		self.instruction = "program visualiser"
 		self.console = pyglet.text.Label(text=self.instruction, y=5, x=5)
 		self.score = pyglet.text.Label(text=str(score), x=int(window_width/2), y=int(window_height-15), bold=1)
 
@@ -40,7 +38,7 @@ class Main_Window(pyglet.window.Window):
 		Robot(pos=[20,0])
 		Box(pos=[20,20])
 		Delivery_Block(pos=[20,60], delivering=1, time=2)
-		Programmer([20,40], program="(0,w,w->1)(1,s,->2)(2,,)")
+		Programmer([20,40], program="(0,w,->1)(1,s,)")
 		Conveyor(pos=[20,80], dir="d")
 		Box(pos=[20,80])
 		Conveyor(pos=[40,80], dir="d")
@@ -50,10 +48,10 @@ class Main_Window(pyglet.window.Window):
 		Box(pos=[120,100])
 
 	def update(self, dt):
-		global time_count
+		global time_count, score
 		time_count += dt
 		if(dt != 0):
-			Updateable.update(dt, time_count)
+			score += Updateable.update(dt, time_count)
 			self.score = pyglet.text.Label(text=str(score), x=int(window_width/2), y=int(window_height-15), bold=1)
 
 	def on_draw(self):
@@ -79,8 +77,9 @@ class Main_Window(pyglet.window.Window):
 		self.console = pyglet.text.Label(self.instruction, y=5, x=5)
 
 	def on_mouse_release(self, x, y, button, modifiers):
+		position = [int(x - x%size), int(y - y%size)]
+
 		if button == pyglet.window.mouse.LEFT:
-			position = [int(x - x%size), int(y - y%size)]
 
 			if self.instruction == "box":
 				Box(position)
@@ -95,7 +94,11 @@ class Main_Window(pyglet.window.Window):
 			elif self.instruction == "delete":
 				for d in Drawable.drawables:
 					if d.position == position:
+						if d is self.selected:
+							self.selected = 0
 						d.delete()
+			elif self.instruction.startswith("program visualiser"):
+				self.selected = Program_Visualiser(pos=position, instruction=self.instruction.split("program visualiser")[1])
 
 window = Main_Window()
 pyglet.app.run()
