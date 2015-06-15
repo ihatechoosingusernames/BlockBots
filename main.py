@@ -13,6 +13,7 @@ from Programmer import Programmer
 from Delivery_Block import Delivery_Block
 from Config		import Config
 from Program_Visualiser import Program_Visualiser
+from Program_Builder import Program_Builder
 
 window_height 	= Config.get_val("window_height")
 window_width 	= Config.get_val("window_width")
@@ -26,9 +27,10 @@ class Main_Window(pyglet.window.Window):
 		self.set_caption("BlockBots!")
 
 		self.selected = 0
-		self.instruction = "program visualiser"
+		self.instruction = "program builder"
 		self.console = pyglet.text.Label(text=self.instruction, y=5, x=5)
 		self.score = pyglet.text.Label(text=str(score), x=int(window_width/2), y=int(window_height-15), bold=1)
+		self.push_handlers(Updateable()) # Pushing an extra pointless handler onto the stack to be popped later
 
 		pyglet.clock.schedule(self.update)
 
@@ -99,6 +101,10 @@ class Main_Window(pyglet.window.Window):
 						d.delete()
 			elif self.instruction.startswith("program visualiser"):
 				self.selected = Program_Visualiser(pos=position, instruction=self.instruction.split("program visualiser")[1])
+			elif self.instruction.startswith("program builder"):
+				self.selected = Program_Builder(pos=position)
+				self.pop_handlers()
+				self.push_handlers(self.selected)
 
 window = Main_Window()
 pyglet.app.run()

@@ -17,3 +17,4 @@ collision_debug 	= 0
 update_debug		= 0
 move_debug			= 0
 visualiser_debug	= 0
+builder_debug		= 1

@@ -7,7 +7,6 @@ visualiser_debug = Config.get_val("visualiser_debug")
 
 class Program_Visualiser(Programmable, Drawable):
 
-	bit_masks = (7, 11, 13, 14)
 	max_recursion = 10
 	total_visualisers = 0
 

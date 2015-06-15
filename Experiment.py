@@ -5,3 +5,5 @@ for i in range(4 - len(seq)):
 	seq = '0' + seq
 
 print(" : " + seq)
+
+print("8" * 8)

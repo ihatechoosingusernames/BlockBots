@@ -12,7 +12,7 @@ class Updateable:
 	def __init__(self):
 		Updateable.updateables.append(self)
 
-	def update_self(self):
+	def update_self(self, dt):
 		return 0
 
 	@staticmethod
