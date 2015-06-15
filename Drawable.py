@@ -10,7 +10,7 @@ class Drawable:
 
 	def __init__(self, pos=[0,0], col=(255,255,255), layer=0):
 		self.position = pos
-		self.shape = [self.position[0], self.position[1], self.position[0] + size, self.position[1], self.position[0] + size, self.position[1] + size, self.position[0], self.position[1] + size]
+		self.shape = [self.position[0], self.position[1], self.position[0] + size, self.position[1], self.position[0] + size, self.position[1] + size, self.position[0], self.position[1] + size] # Describing a square
 		self.colour = col
 		self.layer = layer
 		if layer > Drawable.top_layer:

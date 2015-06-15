@@ -56,6 +56,11 @@ class Main_Window(pyglet.window.Window):
 			score += Updateable.update(dt, time_count)
 			self.score = pyglet.text.Label(text=str(score), x=int(window_width/2), y=int(window_height-15), bold=1)
 
+	def select(self, s): # Gives the selected object access to input events
+		self.pop_handlers()
+		self.selected = s
+		self.push_handlers(s)
+
 	def on_draw(self):
 		self.clear()
 		Drawable.draw()
@@ -83,28 +88,30 @@ class Main_Window(pyglet.window.Window):
 
 		if button == pyglet.window.mouse.LEFT:
 
-			if self.instruction == "box":
-				Box(position)
+			if self.instruction.startswith("box"):
+				self.select(Box(position))
 			elif self.instruction.startswith("programmer"):
-				self.selected = Programmer(position, program=self.instruction.split("programmer")[1])
+				self.select(Programmer(position, program=self.instruction.split("programmer")[1]))
 			elif self.instruction.startswith("conveyor"):
-				Conveyor(pos=position, dir=self.instruction.split(" ")[1])
-			elif self.instruction == "robot":
-				self.selected = Robot(pos=position)
+				self.select(Conveyor(pos=position, dir=self.instruction.split(" ")[1]))
+			elif self.instruction.startswith("robot"):
+				self.select(Robot(pos=position))
 			elif self.instruction.startswith("delivery"):
-				self.selected = Delivery_Block(pos=position, delivering=int(self.instruction.split(" ")[1]), time=int(self.instruction.split(" ")[2]))
+				self.select(Delivery_Block(pos=position, delivering=int(self.instruction.split(" ")[1]), time=int(self.instruction.split(" ")[2])))
+			elif self.instruction.startswith("program visualiser"):
+				self.select(edProgram_Visualiser(pos=position, instruction=self.instruction.split("program visualiser")[1]))
+			elif self.instruction.startswith("program builder"):
+				self.select(Program_Builder(pos=position))
+			elif self.instruction.startswith("select"):
+				for d in Drawable.drawables:
+					if d.position == position:
+						self.select(d)
 			elif self.instruction == "delete":
 				for d in Drawable.drawables:
 					if d.position == position:
 						if d is self.selected:
 							self.selected = 0
 						d.delete()
-			elif self.instruction.startswith("program visualiser"):
-				self.selected = Program_Visualiser(pos=position, instruction=self.instruction.split("program visualiser")[1])
-			elif self.instruction.startswith("program builder"):
-				self.selected = Program_Builder(pos=position)
-				self.pop_handlers()
-				self.push_handlers(self.selected)
 
 window = Main_Window()
 pyglet.app.run()
